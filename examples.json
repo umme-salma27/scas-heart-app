@@ -1,0 +1,50 @@
+{
+  "lower risk": {
+    "record": {
+      "age": 45.0,
+      "sex": 0,
+      "cp": 2,
+      "trestbps": 130.0,
+      "chol": 234.0,
+      "fbs": 0,
+      "restecg": 2,
+      "thalach": 175.0,
+      "exang": 0,
+      "oldpeak": 0.6,
+      "slope": 2
+    },
+    "hospital": "Cleveland"
+  },
+  "higher risk": {
+    "record": {
+      "age": 63.0,
+      "sex": 1,
+      "cp": 4,
+      "trestbps": 160.0,
+      "chol": 230.0,
+      "fbs": 1,
+      "restecg": 0,
+      "thalach": 105.0,
+      "exang": 1,
+      "oldpeak": 1.0,
+      "slope": 2
+    },
+    "hospital": "VA"
+  },
+  "cholesterol not measured": {
+    "record": {
+      "age": 47.0,
+      "sex": 1,
+      "cp": 4,
+      "trestbps": 110.0,
+      "chol": null,
+      "fbs": null,
+      "restecg": 1,
+      "thalach": 149.0,
+      "exang": 0,
+      "oldpeak": 2.1,
+      "slope": 1
+    },
+    "hospital": "Switzerland"
+  }
+}
