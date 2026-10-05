@@ -44,10 +44,29 @@ the distributed benchmark were recoded as missing (the filled values were outcom
 - Novelty warning: mean distance to 10 nearest training patients; warning above 95th percentile (leave-one-out).
 - Median time per patient for a full assessment: about 0.5 s on 2 CPUs.
 
+## Clinical interpretation (guideline context)
+- The app shows the ESC 2019 pretest probability (Table 5; symptomatic patients only) and the Diamond-Forrester 1979
+  pretest probability next to the model result, each with its ESC 2024 likelihood category (very low <= 5%,
+  low > 5-15%, moderate > 15-50%, high > 50-85%, very high > 85%).
+- The model uses test results and is not a pretest-probability tool. In symptomatic patients of unseen hospitals:
+  AUC SCAS-C 0.718 vs ESC 2019 0.583, ACC/AHA 2002 0.547, Diamond-Forrester 0.560; highest net benefit between about
+  15% and 55% risk. ESC 2019 under-predicted this cohort (-15.5 points); SCAS-C over-predicted it (+12.5 points).
+- Explanations agree with 11 of 12 guideline statements (age, sex, typical vs non-anginal pain, resting blood
+  pressure, cholesterol, diabetes, resting ECG, low maximum heart rate, exercise angina, ST depression, flat or
+  downsloping ST segment). The exception is chest pain: in the training cohorts patients without chest pain had more
+  CAD (79.0%) than patients with typical angina (43.5%), probably from referral bias. The app flags patients whose
+  chest-pain contribution runs against the guidelines.
+- Outputs are information, not treatment advice. Design follows the WHO guidance on ethics and governance of AI for
+  health (2021): transparency (exact explanations), safety (intended use, novelty warning), inclusiveness (subgroup
+  results below), accountability (this model card), privacy (no stored data), responsiveness (local recalibration).
+
 ## Limitations
 - Four referral hospitals from 1981-1988 (USA, Hungary, Switzerland); mostly men (79%), middle-aged. Performance in
   women, in other countries (for example South Asia), in screening populations or with modern testing is unknown.
 - Outcome is angiographic stenosis, not clinical events.
+- Discrimination is similar in women and men (AUC 0.790 vs 0.808), but risk in women is over-predicted
+  (+12.7 vs +3.9 points). Discrimination is lower at age >= 55 (0.769 vs 0.850).
+- The chest-pain variable conflicts with guideline pretest tables (see above).
 - Missingness of a variable carried hospital-specific meaning in the training data; the app therefore does not use
   missingness as a predictor by default.
 

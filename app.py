@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from guidelines import chest_pain_conflict, esc2024_category, guideline_context
 from scas_deploy import F, SCHEMA, SCASModel, sigmoid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -81,6 +82,12 @@ html, body, .stApp, .stMarkdown, button, input, textarea, select {font-family: '
 .reason:last-child {border-bottom: none;}
 .reason .msr {font-size: 22px;}
 .up {color: #C62828;} .down {color: #1565C0;}
+.gtab {width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 4px;}
+.gtab td, .gtab th {padding: 7px 8px; border-bottom: 1px solid #F3D6D6; text-align: left; vertical-align: top;}
+.gtab th {color: #6B7280; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 600;}
+.gtab td.num {font-weight: 650; color: #1F2937; white-space: nowrap;}
+.gwarn {background: #FFF8E1; border-left: 4px solid #F9A825; padding: 9px 13px; border-radius: 8px; color: #5D4400;
+        font-size: .86rem; margin-top: 10px;}
 .foot {color: #9CA3AF; font-size: .78rem; text-align: center; margin-top: 26px; border-top: 1px solid #F3D6D6;
        padding-top: 10px;}
 </style>
@@ -203,6 +210,43 @@ def reasons_html(out, k=3):
     return "".join(rows) or '<div class="small">No single variable moves the risk by more than 0.05 log-odds.</div>'
 
 
+def guideline_html(out, rec):
+    age, sex, cp = float(rec["age"]), int(rec["sex"]), int(rec["cp"])
+    g = guideline_context(age, sex, cp)
+    p = out["prob"]
+
+    def pct(v):
+        return "-" if v is None else f"{100 * v:.0f}%"
+
+    def cat(v):
+        return "-" if v is None else esc2024_category(v)
+
+    clamp = " (nearest age band)"
+    esc_note = ("Not defined for patients without chest pain." if g["esc2019"] is None else
+                "Age, sex and chest pain only." + (clamp if g["esc2019_age_clamped"] else ""))
+    df_note = "Age, sex and chest pain only; era-matched to the training data." + (clamp if g["df1979_age_clamped"] else "")
+    rows = [("SCAS model (this result)", pct(p), cat(p), "Uses resting and exercise-test results as well."),
+            ("ESC 2019 pretest probability", pct(g["esc2019"]), cat(g["esc2019"]), esc_note),
+            ("Diamond-Forrester 1979", pct(g["df1979"]), cat(g["df1979"]), df_note)]
+    body = "".join(f'<tr><td>{html.escape(a)}</td><td class="num">{b}</td><td>{html.escape(c)}</td>'
+                   f'<td style="color:#6B7280">{html.escape(d)}</td></tr>' for a, b, c, d in rows)
+    s = (f'<table class="gtab"><tr><th>Source</th><th>Probability</th><th>ESC 2024 likelihood category</th>'
+         f'<th>Note</th></tr>{body}</table>'
+         '<div class="small" style="margin-top:8px">The model is not a pretest-probability tool: it uses test results, '
+         'so differences from the guideline values show the information added by those results. In symptomatic '
+         'patients of new hospitals the model discriminated better than ESC 2019 pretest probability (AUC 0.718 vs '
+         '0.583) but over-predicted (+12.5 points), so local recalibration is advised.</div>')
+    phi_cp = next(e["phi"] for e in out["explanation"] if e["feature"] == "cp")
+    if chest_pain_conflict(cp, phi_cp):
+        s += ('<div class="gwarn"><b>Chest pain contribution differs from the guidelines.</b> Here, '
+              f'{html.escape(SCHEMA["cp"]["codes"][cp])} {"lowers" if phi_cp < 0 else "raises"} the estimated risk '
+              f'({phi_cp:+.2f} log-odds). In the 1981-1988 referral cohorts used for training, patients without chest '
+              'pain had more CAD (79.0%) than patients with typical angina (43.5%), the opposite of all pretest tables, '
+              'most likely because of referral bias. The model reproduces the data; weigh the guideline pretest '
+              'probability above when interpreting this patient.</div>')
+    return s
+
+
 def json_ready(out):
     clean = {k: v for k, v in out.items() if not k.startswith("_")}
     return json.loads(json.dumps(clean, default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o)))
@@ -304,14 +348,16 @@ st.markdown(f"""
     <h1>SCAS Cardiac Risk Assistant</h1>
     <div class="sub">Probability of coronary artery disease with exact, source-consistent explanations</div>
     <div class="tags"><span class="tag">Exact Shapley explanation</span><span class="tag">Missing-value aware</span>
-    <span class="tag">Robustness badge</span><span class="tag">Novelty warning</span><span class="tag">Local recalibration</span></div>
+    <span class="tag">Robustness badge</span><span class="tag">Novelty warning</span><span class="tag">Local recalibration</span>
+    <span class="tag">Guideline context</span></div>
   </div>
   <div class="deco">{icon("ecg_heart")}{icon("stethoscope")}</div>
 </div>
 <div class="scas-note"><b>Research prototype.</b> Estimates the probability of angiographic coronary artery disease
 (&gt; 50% narrowing in at least one major vessel) in adults referred for evaluation of suspected CAD. Not a diagnosis,
 not a screening tool and not a 10-year risk score. Trained on 918 patients from four hospitals (1981-1988); validate
-and recalibrate locally before clinical use. Entered data are not stored.</div>
+and recalibrate locally before clinical use. Outputs are information for qualified clinicians, not treatment advice;
+testing and treatment decisions follow current guidelines and clinical judgement. Entered data are not stored.</div>
 """, unsafe_allow_html=True)
 
 if examples:
@@ -411,6 +457,11 @@ elif res is not None:
         <div class="small"><b>Not measured:</b> {html.escape(', '.join(nm)) if nm else 'none'}</div>
         {''.join(f'<div class="small">{html.escape(n)}</div>' for n in out['notes'])}</div>""",
                 unsafe_allow_html=True)
+
+    st.markdown("")
+    with st.container(border=True):
+        section("Guideline context", "menu_book")
+        st.markdown(guideline_html(out, res["record"]), unsafe_allow_html=True)
 
     st.markdown("")
     left, right = st.columns([1, 1.7])
