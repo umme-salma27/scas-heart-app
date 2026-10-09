@@ -234,8 +234,8 @@ def guideline_html(out, rec):
          f'<th>Note</th></tr>{body}</table>'
          '<div class="small" style="margin-top:8px">The model is not a pretest-probability tool: it uses test results, '
          'so differences from the guideline values show the information added by those results. In symptomatic '
-         'patients of new hospitals the model discriminated better than ESC 2019 pretest probability (AUC 0.718 vs '
-         '0.583) but over-predicted (+12.5 points), so local recalibration is advised.</div>')
+         'patients of new hospitals the model discriminated better than ESC 2019 pretest probability (AUC 0.731 vs '
+         '0.583) but over-predicted (+6.2 points), so local recalibration is advised.</div>')
     phi_cp = next(e["phi"] for e in out["explanation"] if e["feature"] == "cp")
     if chest_pain_conflict(cp, phi_cp):
         s += ('<div class="gwarn"><b>Chest pain contribution differs from the guidelines.</b> Here, '
